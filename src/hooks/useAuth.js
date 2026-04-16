@@ -1,7 +1,6 @@
 /**
  * useAuth.js
- * Exposes current Supabase session and admin role check.
- * Full implementation in Phase 1.
+ * Supabase auth hook — exposes session, admin check, login, and logout.
  */
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
@@ -14,14 +13,21 @@ export function useAuth() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      if (session) checkAdmin(session.user.id)
-      else setLoading(false)
+      if (session) {
+        checkAdmin(session.user.id)
+      } else {
+        setLoading(false)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (session) checkAdmin(session.user.id)
-      else { setIsAdmin(false); setLoading(false) }
+      if (session) {
+        checkAdmin(session.user.id)
+      } else {
+        setIsAdmin(false)
+        setLoading(false)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -37,5 +43,16 @@ export function useAuth() {
     setLoading(false)
   }
 
-  return { session, isAdmin, loading }
+  async function login(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+    return data
+  }
+
+  async function logout() {
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+  }
+
+  return { session, isAdmin, loading, login, logout }
 }
